@@ -1,0 +1,107 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "27ea6b12-8324-421b-bae3-34ce52d8fa9f",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "employees": {
+      "name": "employees",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "department": {
+          "name": "department",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "salary_minor": {
+          "name": "salary_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "employee_country_department": {
+          "name": "employee_country_department",
+          "columns": [
+            "country",
+            "department"
+          ],
+          "isUnique": false
+        },
+        "employee_department": {
+          "name": "employee_department",
+          "columns": [
+            "department"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "salary_range": {
+          "name": "salary_range",
+          "value": "\"employees\".\"salary_minor\" BETWEEN 1 AND 10000000000 AND typeof(\"employees\".\"salary_minor\") = 'integer'"
+        },
+        "currency_country": {
+          "name": "currency_country",
+          "value": "(\"employees\".\"country\" = 'India' AND \"employees\".\"currency\" = 'INR') OR (\"employees\".\"country\" = 'United States' AND \"employees\".\"currency\" = 'USD') OR (\"employees\".\"country\" = 'United Kingdom' AND \"employees\".\"currency\" = 'GBP') OR (\"employees\".\"country\" = 'Germany' AND \"employees\".\"currency\" = 'EUR')"
+        },
+        "revision_nonnegative": {
+          "name": "revision_nonnegative",
+          "value": "\"employees\".\"revision\" >= 0"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
