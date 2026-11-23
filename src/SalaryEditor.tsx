@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { figure, mark, request, type Employee } from './api'
 import { salaryCanSave } from './employee-forms'
@@ -26,33 +27,31 @@ export function SalaryEditor({
   const major = employee.salary_minor / 100
   const [amount, setAmount] = useState(Number.isInteger(major) ? String(major) : major.toFixed(2))
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const conflict = error.includes('Reload')
-  const canSave = !busy && salaryCanSave(amount, employee.salary_minor)
-
-  async function save(event: FormEvent) {
-    event.preventDefault()
-    if (!canSave) return
-    setBusy(true)
-    setError('')
-    try {
-      const saved = await request<Employee>('/api/employees/' + employee.id + '/salary', {
+  const saveSalary = useMutation({
+    mutationFn: () =>
+      request<Employee>('/api/employees/' + employee.id + '/salary', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salary: amount.trim(), revision: employee.revision }),
-      })
-      onSave(saved)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed. Try again.')
-      setBusy(false)
-    }
+      }),
+    onSuccess: (saved) => onSave(saved),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : 'Save failed. Try again.'),
+  })
+  const conflict = error.includes('Reload')
+  const canSave = !saveSalary.isPending && salaryCanSave(amount, employee.salary_minor)
+
+  function save(event: FormEvent) {
+    event.preventDefault()
+    if (!canSave) return
+    setError('')
+    saveSalary.mutate()
   }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !saveSalary.isPending) onClose()
       }}
     >
       <DialogContent>
@@ -93,12 +92,12 @@ export function SalaryEditor({
                 Reload employee
               </Button>
             )}
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saveSalary.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={!canSave}>
-              {busy && <Spinner />}
-              Save salary
+              {saveSalary.isPending && <Spinner />}
+              {saveSalary.isPending ? 'Saving…' : 'Save salary'}
             </Button>
           </DialogFooter>
         </form>

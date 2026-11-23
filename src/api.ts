@@ -4,6 +4,19 @@ export type Employee = EmployeeView
 export type { EmployeeDetail, CoreEmployee }
 export type { Summary, Charts } from '../server/employees'
 export type Directory = { items: Employee[]; total: number; pages: number; page: number; pageSize: number }
+export async function downloadCsv(params: URLSearchParams) {
+  const response = await fetch('/api/employees/export?' + params)
+  if (response.status === 401) window.dispatchEvent(new Event('session-ended'))
+  if (!response.ok) throw new Error('Could not export these employees.')
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'acme-employees.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options)
   if (response.status === 401) window.dispatchEvent(new Event('session-ended'))

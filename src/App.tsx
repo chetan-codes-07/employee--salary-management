@@ -11,9 +11,18 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Spinner } from '@/components/ui/spinner'
 import { Toaster } from '@/components/ui/sonner'
 
-export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; signingOut:boolean; signOutError:string}) {
+export function App({
+  onSignOut,
+  signingOut,
+  signOutError,
+}: {
+  onSignOut: () => void
+  signingOut: boolean
+  signOutError: string
+}) {
   const initial = readRoute()
   const [path, setPath] = useState<Page>(initial.path)
   const [employeeId, setEmployeeId] = useState(initial.employeeId)
@@ -63,12 +72,9 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
   const charts = chartsQuery.data ?? null
   const directoryLoading = directoryQuery.isPending
   const insightLoading = summaryQuery.isPending || chartsQuery.isPending
+  const retrying = path === '/employees' ? directoryQuery.isFetching : summaryQuery.isFetching || chartsQuery.isFetching
   const activeError =
-    path === '/employees'
-      ? directoryQuery.error
-      : path === '/'
-        ? summaryQuery.error || chartsQuery.error
-        : null
+    path === '/employees' ? directoryQuery.error : path === '/' ? summaryQuery.error || chartsQuery.error : null
 
   useEffect(() => {
     const onPop = () => {
@@ -136,9 +142,16 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
           <Separator orientation="vertical" className="h-4" />
           <span className="text-sm font-medium">{path === '/' ? 'Insights' : 'Employees'}</span>
           <span className="ml-auto text-sm text-muted-foreground">Fictional records</span>
-          <Button variant="outline" disabled={signingOut} onClick={onSignOut}>{signingOut?'Signing out…':'Sign out'}</Button>
+          <Button variant="outline" disabled={signingOut} onClick={onSignOut}>
+            {signingOut && <Spinner />}
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </Button>
         </header>
-        {signOutError && <p role="alert" className="px-4 text-destructive">{signOutError}</p>}
+        {signOutError && (
+          <p role="alert" className="px-4 text-destructive">
+            {signOutError}
+          </p>
+        )}
         <div
           className={
             path === '/employees'
@@ -154,8 +167,10 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={retrying}
                   onClick={() => (path === '/employees' ? directoryQuery.refetch() : refreshCompensation())}
                 >
+                  {retrying && <Spinner />}
                   Retry
                 </Button>
               </AlertDescription>

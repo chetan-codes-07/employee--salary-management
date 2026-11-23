@@ -1,11 +1,13 @@
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { Charts, Summary } from './api'
-import { figure } from './api'
+import { downloadCsv, figure } from './api'
 import { PayCharts } from './PayCharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { RATE_DATE } from '../server/profile'
 
 type Options = { countries: string[]; departments: string[] }
@@ -32,24 +34,16 @@ export function Insight({
   const people = groups?.reduce((total, group) => total + group.count, 0) ?? 0
   const scope = [country || 'All countries', department || 'All departments'].join(', ')
 
-  async function exportCsv() {
-    const params = new URLSearchParams()
-    if (country) params.set('country', country)
-    if (department) params.set('department', department)
-    const response = await fetch('/api/employees/export?' + params)
-    if (!response.ok) {
-      toast.error('Could not export this insight.')
-      return
-    }
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'acme-employees.csv'
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Insight exported.')
-  }
+  const exportCsv = useMutation({
+    mutationFn: () => {
+      const params = new URLSearchParams()
+      if (country) params.set('country', country)
+      if (department) params.set('department', department)
+      return downloadCsv(params)
+    },
+    onSuccess: () => toast.success('Insight exported.'),
+    onError: (reason) => toast.error(reason instanceof Error ? reason.message : 'Could not export this insight.'),
+  })
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,8 +79,9 @@ export function Insight({
               ))}
             </NativeSelect>
           </div>
-          <Button variant="outline" onClick={exportCsv}>
-            Export CSV
+          <Button variant="outline" disabled={exportCsv.isPending} onClick={() => exportCsv.mutate()}>
+            {exportCsv.isPending && <Spinner />}
+            {exportCsv.isPending ? 'Exporting…' : 'Export CSV'}
           </Button>
         </div>
       </div>

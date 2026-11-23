@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useState, type FormEvent } from 'react'
 import { ArrowLeft } from 'lucide-react'
@@ -15,6 +15,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']
@@ -33,18 +34,20 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
   const [removing, setRemoving] = useState(false)
 
   function remember(saved: Detail) {
-    queryClient.setQueryData(['employee', id], saved)
+    queryClient.setQueryData<Detail>(['employee', id], (current) => (current ? { ...current, ...saved } : saved))
     refreshCompensation(id)
   }
 
-  async function setStatus(status: 'Active' | 'Inactive') {
-    const saved = await request<Detail>('/api/employees/' + id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, revision: detail?.revision }),
-    })
-    remember(saved)
-  }
+  const setStatus = useMutation({
+    mutationFn: (status: 'Active' | 'Inactive') =>
+      request<Detail>('/api/employees/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, revision: detail?.revision }),
+      }),
+    onSuccess: (saved) => remember(saved),
+    onError: (reason) => toast.error(reason instanceof Error ? reason.message : 'Could not update status.'),
+  })
 
   const band = detail?.band
   const marker = band ? Math.min(100, Math.max(0, band.position * 100)) : 0
@@ -80,13 +83,11 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
             </Button>
             <Button
               variant="outline"
-              onClick={() =>
-                setStatus(detail.status === 'Active' ? 'Inactive' : 'Active').catch((reason) =>
-                  toast.error(reason instanceof Error ? reason.message : 'Could not update status.'),
-                )
-              }
+              disabled={setStatus.isPending}
+              onClick={() => setStatus.mutate(detail.status === 'Active' ? 'Inactive' : 'Active')}
             >
-              {detail.status === 'Active' ? 'Deactivate' : 'Activate'}
+              {setStatus.isPending && <Spinner />}
+              {setStatus.isPending ? 'Saving…' : detail.status === 'Active' ? 'Deactivate' : 'Activate'}
             </Button>
             <Button variant="outline" onClick={() => setRemoving(true)}>
               Remove
@@ -101,7 +102,8 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
           <AlertTitle>Employee unavailable</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-3">
             <span>{error instanceof Error ? error.message : 'Unable to load this employee.'}</span>
-            <Button variant="outline" size="sm" onClick={() => employeeQuery.refetch()}>
+            <Button variant="outline" size="sm" disabled={employeeQuery.isFetching} onClick={() => employeeQuery.refetch()}>
+              {employeeQuery.isFetching && <Spinner />}
               Retry
             </Button>
           </AlertDescription>
@@ -254,39 +256,37 @@ function DetailsDialog({
   const [email, setEmail] = useState(detail.email)
   const [level, setLevel] = useState<string>(detail.level)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const current = { jobTitle: detail.job_title, email: detail.email, level: detail.level }
-  const canSave = !busy && detailsCanSave({ jobTitle, email, level }, current)
-
-  async function save(event: FormEvent) {
-    event.preventDefault()
-    const parsed = parseDetails({ jobTitle, email, level })
-    if (!parsed.success || !detailsCanSave(parsed.data, current) || busy) return
-    setBusy(true)
-    setError('')
-    try {
-      const saved = await request<Detail>('/api/employees/' + detail.id, {
+  const saveDetails = useMutation({
+    mutationFn: (parsed: { jobTitle: string; email: string; level: string }) =>
+      request<Detail>('/api/employees/' + detail.id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           revision: detail.revision,
-          jobTitle: parsed.data.jobTitle,
-          email: parsed.data.email,
-          level: parsed.data.level,
+          jobTitle: parsed.jobTitle,
+          email: parsed.email,
+          level: parsed.level,
         }),
-      })
-      onSaved(saved)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not save these details.')
-      setBusy(false)
-    }
+      }),
+    onSuccess: (saved) => onSaved(saved),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : 'Could not save these details.'),
+  })
+  const current = { jobTitle: detail.job_title, email: detail.email, level: detail.level }
+  const canSave = !saveDetails.isPending && detailsCanSave({ jobTitle, email, level }, current)
+
+  function save(event: FormEvent) {
+    event.preventDefault()
+    const parsed = parseDetails({ jobTitle, email, level })
+    if (!parsed.success || !detailsCanSave(parsed.data, current) || saveDetails.isPending) return
+    setError('')
+    saveDetails.mutate(parsed.data)
   }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !saveDetails.isPending) onClose()
       }}
     >
       <DialogContent>
@@ -323,11 +323,12 @@ function DetailsDialog({
           </Field>
           {error && <FieldError>{error}</FieldError>}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saveDetails.isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={!canSave}>
-              Save details
+              {saveDetails.isPending && <Spinner />}
+              {saveDetails.isPending ? 'Saving…' : 'Save details'}
             </Button>
           </DialogFooter>
         </form>

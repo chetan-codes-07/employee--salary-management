@@ -1,7 +1,8 @@
+import { useMutation } from '@tanstack/react-query'
 import { useRef, useState, type FormEvent } from 'react'
 import { csvEmployees, IMPORT_BATCH_SIZE, MAX_FILE_BYTES } from '../shared/import-csv'
 import { toast } from 'sonner'
-import { figure, request, type Directory as Page, type Employee } from './api'
+import { downloadCsv, figure, request, type Directory as Page, type Employee } from './api'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Filter, Pencil, Trash2 } from 'lucide-react'
 import { RemoveEmployeeDialog } from './RemoveEmployeeDialog'
@@ -56,7 +58,6 @@ export function Directory({
   onCreated: () => void
 }) {
   const file = useRef<HTMLInputElement>(null)
-  const [importing, setImporting] = useState(false)
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<Employee | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -65,40 +66,28 @@ export function Directory({
   const total = directory?.total ?? 0
   const count = total.toLocaleString()
 
-  async function exportCsv() {
-    const params = new URLSearchParams()
-    if (q) params.set('q', q)
-    if (country) params.set('country', country)
-    if (department) params.set('department', department)
-    if (level) params.set('level', level)
-    if (status) params.set('status', status)
-    const response = await fetch('/api/employees/export?' + params)
-    if (response.status === 401) window.dispatchEvent(new Event('session-ended'))
-    if (!response.ok) {
-      toast.error('Could not export this directory.')
-      return
-    }
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'acme-employees.csv'
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Directory exported.')
-  }
+  const exportCsv = useMutation({
+    mutationFn: () => {
+      const params = new URLSearchParams()
+      if (q) params.set('q', q)
+      if (country) params.set('country', country)
+      if (department) params.set('department', department)
+      if (level) params.set('level', level)
+      if (status) params.set('status', status)
+      return downloadCsv(params)
+    },
+    onSuccess: () => toast.success('Directory exported.'),
+    onError: (reason) => toast.error(reason instanceof Error ? reason.message : 'Could not export this directory.'),
+  })
 
-  async function importCsv(list: FileList | null) {
-    const csv = list?.[0]
-    if (!csv || importing) return
-    setImporting(true)
-    const result = { created: 0, errors: [] as { line: number; message: string }[] }
-    try {
+  const importCsv = useMutation({
+    mutationFn: async (csv: File) => {
       if (csv.size > MAX_FILE_BYTES) throw new Error('Import file is too large.')
       const text = await csv.text()
       const rows = csvEmployees(text)
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
       const fileId = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+      const result = { created: 0, errors: [] as { line: number; message: string }[] }
       for (let offset = 0; offset < rows.length; offset += IMPORT_BATCH_SIZE) {
         const batch = await request<typeof result>('/api/employees/import', {
           method: 'POST',
@@ -108,6 +97,10 @@ export function Directory({
         result.created += batch.created
         result.errors.push(...batch.errors)
       }
+      return result
+    },
+    onSuccess: (result) => {
+      if (result.created) onCreated()
       if (result.errors.length) {
         toast.error(`Imported ${result.created} employees.`, {
           description: `Row ${result.errors[0].line}: ${result.errors[0].message}`,
@@ -115,28 +108,25 @@ export function Directory({
       } else {
         toast.success(`Imported ${result.created} employees.`)
       }
-    } catch (reason) {
+    },
+    onError: (reason) =>
       toast.error(reason instanceof Error ? reason.message : 'Could not import that file.', {
         description: 'Select the same file to retry. Completed batches are preserved.',
-      })
-    } finally {
-      if (result.created) {
-        onCreated()
-      }
-      setImporting(false)
-    }
-  }
+      }),
+  })
 
   return (
     <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-medium">Employees</h1>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={importing} onClick={() => file.current?.click()}>
-            {importing ? 'Importing…' : 'Import CSV'}
+          <Button variant="outline" disabled={importCsv.isPending} onClick={() => file.current?.click()}>
+            {importCsv.isPending && <Spinner />}
+            {importCsv.isPending ? 'Importing…' : 'Import CSV'}
           </Button>
-          <Button variant="outline" onClick={exportCsv}>
-            Export CSV
+          <Button variant="outline" disabled={exportCsv.isPending} onClick={() => exportCsv.mutate()}>
+            {exportCsv.isPending && <Spinner />}
+            {exportCsv.isPending ? 'Exporting…' : 'Export CSV'}
           </Button>
           <Button onClick={() => setAdding(true)}>Add employee</Button>
           <input
@@ -145,7 +135,8 @@ export function Directory({
             type="file"
             accept=".csv,text/csv"
             onChange={(event) => {
-              importCsv(event.target.files)
+              const csv = event.target.files?.[0]
+              if (csv && !importCsv.isPending) importCsv.mutate(csv)
               event.target.value = ''
             }}
           />
@@ -585,31 +576,29 @@ function AddEmployeeDialog({
   const [level, setLevel] = useState(options?.levels[2] ?? 'L3')
   const [salary, setSalary] = useState('')
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  async function save(event: FormEvent) {
-    event.preventDefault()
-    if (busy) return
-    setBusy(true)
-    setError('')
-    try {
-      const saved = await request<Employee>('/api/employees', {
+  const saveEmployee = useMutation({
+    mutationFn: () =>
+      request<Employee>('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, jobTitle, department, country, level, salary }),
-      })
-      onCreated(saved)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not add this employee.')
-      setBusy(false)
-    }
+      }),
+    onSuccess: (saved) => onCreated(saved),
+    onError: (reason) => setError(reason instanceof Error ? reason.message : 'Could not add this employee.'),
+  })
+
+  function save(event: FormEvent) {
+    event.preventDefault()
+    if (saveEmployee.isPending) return
+    setError('')
+    saveEmployee.mutate()
   }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !saveEmployee.isPending) onClose()
       }}
     >
       <DialogContent>
@@ -669,11 +658,12 @@ function AddEmployeeDialog({
           </Field>
           {error && <FieldError>{error}</FieldError>}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saveEmployee.isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={busy}>
-              Add employee
+            <Button type="submit" disabled={saveEmployee.isPending}>
+              {saveEmployee.isPending && <Spinner />}
+              {saveEmployee.isPending ? 'Adding…' : 'Add employee'}
             </Button>
           </DialogFooter>
         </form>

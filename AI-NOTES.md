@@ -62,6 +62,8 @@ The user asked to use UI UX Pro Max. At upstream revision 281e453, the design-sy
 
 The request to fix the review findings led to SQLite-triggered salary history, persistent employee ID allocation, revision checks on profile writes, and digest-based CSV batch receipts. Automated checks force failed writes and retry batches against an isolated database. Local sign-in configuration was repaired privately.
 
+The user asked for a loader on every button that calls the API. Export, import, save, remove, status, sign-in, and sign-out now use a TanStack mutation and show a spinner from `isPending`.
+
 The user asked for a reload to stop flashing the sign-in page. The gate now restores a remembered sign-in immediately and confirms the httpOnly cookie in the background. The sign-in form is rendered only after the server says the session is absent.
 
 The user asked to stop showing a skeleton on every page change. TanStack Query now caches directory, insight, and employee reads. The skeleton stays for the first load of a query; a return visit paints the cached result and refreshes it behind the UI. Salary, profile, import, and remove still invalidate those queries.

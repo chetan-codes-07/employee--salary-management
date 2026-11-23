@@ -11,6 +11,7 @@
 - **Author badge:** The server injects a floating Made by chetangehlot badge into the HTML shell outside `#root`, with a restore script if the node is removed from the DOM.
 - **Client cache:** TanStack Query keeps directory, insight, and employee responses. A view shows a skeleton only before its first successful read. Later visits render the cached rows immediately and refresh them in the background. Sign-out clears the cache.
 - **Session restore:** The httpOnly session cookie remains the access check. A reload with a remembered sign-in opens the dashboard immediately and confirms the cookie in the background. The sign-in form appears only after the server reports that the session is gone.
+- **Action buttons:** Each button that calls the API uses a TanStack mutation. While that mutation is pending the button shows a spinner, a pending label, and ignores another click.
 
 Employee numbers above the seeded range are issued monotonically. SQLite owns salary history writes so a failed history insert rolls back the raise. CSV uploads commit 100 rows at a time and use one receipt per file and offset to support retries.
 

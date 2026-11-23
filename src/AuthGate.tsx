@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
 import { queryClient } from './query'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 
 type Session = 'checking' | 'signed-in' | 'signed-out' | 'unavailable'
 
@@ -31,9 +33,40 @@ function rememberSignedIn(signedIn: boolean) {
 export function AuthGate() {
   const [session, setSession] = useState<Session>(rememberedSession)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
+  const signIn = useMutation({
+    mutationFn: async (data: FormData) => {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+      })
+      const payload = (await response.json()) as { authenticated?: boolean; error?: string }
+      if (!response.ok || !payload.authenticated) throw new Error(payload.error || 'Unable to sign in.')
+    },
+    onSuccess: () => {
+      rememberSignedIn(true)
+      setShowPassword(false)
+      setError('')
+      setSession('signed-in')
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : 'Unable to sign in. Try again.'),
+  })
+  const signOut = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      if (!response.ok) throw new Error()
+    },
+    onSuccess: () => {
+      queryClient.clear()
+      rememberSignedIn(false)
+      setShowPassword(false)
+      setError('')
+      setSession('signed-out')
+    },
+    onError: () => setError('Could not sign out. Please try again.'),
+  })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -67,47 +100,13 @@ export function AuthGate() {
     }
   }, [attempt])
 
-  async function signIn(event: FormEvent<HTMLFormElement>) {
+  function submitSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    setBusy(true)
     setError('')
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
-      })
-      const payload = (await response.json()) as { authenticated?: boolean; error?: string }
-      if (!response.ok || !payload.authenticated) throw new Error(payload.error || 'Unable to sign in.')
-      rememberSignedIn(true)
-      setShowPassword(false)
-      setSession('signed-in')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in. Try again.')
-    } finally {
-      setBusy(false)
-    }
+    signIn.mutate(new FormData(event.currentTarget))
   }
 
-  async function signOut() {
-    setBusy(true)
-    setError('')
-    try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' })
-      if (!response.ok) throw new Error()
-      queryClient.clear()
-      rememberSignedIn(false)
-      setShowPassword(false)
-      setSession('signed-out')
-    } catch {
-      setError('Could not sign out. Please try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (session === 'signed-in') return <App onSignOut={signOut} signingOut={busy} signOutError={error} />
+  if (session === 'signed-in') return <App onSignOut={() => signOut.mutate()} signingOut={signOut.isPending} signOutError={error} />
   if (session === 'checking') {
     return (
       <main className="min-h-svh bg-background" aria-busy="true">
@@ -142,7 +141,7 @@ export function AuthGate() {
             </div>
           )}
           {session === 'signed-out' && (
-            <form onSubmit={signIn}>
+            <form onSubmit={submitSignIn}>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="hr-email">Email address</FieldLabel>
@@ -184,9 +183,9 @@ export function AuthGate() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={busy}>
-                  <LogIn data-icon="inline-start" />
-                  {busy ? 'Signing in…' : 'Sign in'}
+                <Button type="submit" disabled={signIn.isPending}>
+                  {signIn.isPending ? <Spinner /> : <LogIn data-icon="inline-start" />}
+                  {signIn.isPending ? 'Signing in…' : 'Sign in'}
                 </Button>
               </FieldGroup>
             </form>

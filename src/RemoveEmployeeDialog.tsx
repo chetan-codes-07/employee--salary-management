@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { request } from './api'
 import { Button } from '@/components/ui/button'
@@ -21,23 +21,17 @@ export function RemoveEmployeeDialog({
   onClose: () => void
   onRemoved: () => void
 }) {
-  const [busy, setBusy] = useState(false)
-
-  async function remove() {
-    if (busy) return
-    setBusy(true)
-    try {
-      await request<{ id: string }>('/api/employees/' + employee.id, { method: 'DELETE' })
+  const removeEmployee = useMutation({
+    mutationFn: () => request<{ id: string }>('/api/employees/' + employee.id, { method: 'DELETE' }),
+    onSuccess: () => {
       toast.success(`${employee.name} removed.`)
       onRemoved()
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : 'Could not remove this employee.')
-      setBusy(false)
-    }
-  }
+    },
+    onError: (reason) => toast.error(reason instanceof Error ? reason.message : 'Could not remove this employee.'),
+  })
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose() }}>
+    <Dialog open onOpenChange={(open) => { if (!open && !removeEmployee.isPending) onClose() }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Remove employee</DialogTitle>
@@ -46,12 +40,12 @@ export function RemoveEmployeeDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={removeEmployee.isPending}>
             Cancel
           </Button>
-          <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
-            {busy && <Spinner />}
-            {busy ? 'Removing…' : 'Remove'}
+          <Button type="button" variant="destructive" onClick={() => removeEmployee.mutate()} disabled={removeEmployee.isPending}>
+            {removeEmployee.isPending && <Spinner />}
+            {removeEmployee.isPending ? 'Removing…' : 'Remove'}
           </Button>
         </DialogFooter>
       </DialogContent>
