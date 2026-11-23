@@ -11,8 +11,11 @@ await build({
   outfile: 'api/index.js',
   bundle: true,
   platform: 'node',
-  format: 'cjs',
+  format: 'esm',
   target: 'node20',
   packages: 'external',
+  banner: {
+    js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
+  },
   logLevel: 'info',
 })

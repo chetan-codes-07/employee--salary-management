@@ -22,10 +22,7 @@ function authConfigured(config: AuthConfig) {
   const email = config.HR_EMAIL?.trim()
   const password = config.HR_PASSWORD?.trim()
   return Boolean(
-    email &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-    password &&
-    password.length >= minimumPasswordLength(config),
+    email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password && password.length >= minimumPasswordLength(config),
   )
 }
 
