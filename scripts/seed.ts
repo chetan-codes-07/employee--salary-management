@@ -1,5 +1,15 @@
-import { openLocal } from '../server/database';
-import {migrate} from '../server/migrate';
-import {seed} from '../server/seed-data';
-const local=openLocal();
-try {migrate(local.db);await seed(local.sql);const [row]=await local.sql.all<{count:number}>('SELECT COUNT(*) AS count FROM employees');if(row.count!==10_000)throw new Error(`Expected 10000 employees, found ${row.count}`);console.log(`Seed complete: ${row.count} fictional employees (existing edits preserved).`);}finally{local.close();}
+import { openLocal } from '../server/database'
+import { migrate } from '../server/migrate'
+import { seed, seedCounts } from '../server/seed-data'
+import { existsSync } from 'node:fs'
+if (existsSync('.env')) process.loadEnvFile('.env')
+const local = openLocal()
+try {
+  migrate(local.db)
+  await seed(local.sql)
+  const { fixtures, additional } = await seedCounts(local.sql)
+  if (fixtures !== 10_000) throw new Error(`Expected 10000 fixture IDs, found ${fixtures}`)
+  console.log(`Seed complete: ${fixtures} fixtures and ${additional} additional employees. Existing edits preserved.`)
+} finally {
+  local.close()
+}

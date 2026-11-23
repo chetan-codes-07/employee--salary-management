@@ -8,4 +8,4 @@ Use strict TypeScript. Treat incoming request data as unknown until checked. Kee
 - Prefer readable functions and named intermediate values when validation or arithmetic becomes hard to scan. Split UI components around the directory, summary and editor when they develop separate responsibilities.
 - Commit each reviewable behavior with its tests. Record a changed decision in the same commit and describe the user-visible effect in the commit message.
 
-Run `npm run check` for the configured static check. There is currently no lint script.
+Run `npm run check` for the TypeScript check. Run `npm run lint` for ESLint and `npm run format` for Prettier. Prettier uses no semicolons, single quotes, trailing commas, and a 120-character line width.

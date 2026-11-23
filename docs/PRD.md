@@ -20,7 +20,7 @@ Payroll runs, tax calculations and payments belong to payroll execution. Bonuses
 
 ## Workflow and screens
 
-On the dashboard, choose **India** and **Engineering** and note the INR total. Search by name or ID and confirm the employee’s identity. Open the salary editor, increase the annual base salary by ₹10,000 and save. Refresh, return to the same country and department, and compare the new total with the original. Pagination must never change the group being measured.
+Open the pay insight, choose **India** and **Engineering**, and note the INR total. Open **Employees**, search by name or ID, and confirm the employee’s identity. Open the salary editor, increase the annual base salary by ₹10,000 and save. Return to the insight with the same country and department, and compare the new total with the original. Pagination on the employee page must never change the group being measured.
 
 ## Acceptance checks
 
@@ -28,6 +28,6 @@ On the dashboard, choose **India** and **Engineering** and note the INR total. S
 - [ ] **Edit.** A valid decimal amount saves in the recorded currency and survives refresh. An invalid amount leaves the stored salary unchanged. A conflicting edit tells HR to reload the latest record.
 - [ ] **Report.** A ₹10,000 raise increases the India Engineering INR total by exactly ₹10,000. Headcount stays constant. The average reflects the new total divided by headcount and rounds to the nearest minor unit. Other currencies retain their own totals.
 
-## Decision for review
+## Decision
 
-Should typing a name or ID narrow only the directory, or also the summary? The original requirements say “same filtered population.” For the demo, the proposed refinement is to keep the summary scoped to country and department while search narrows the directory. Label both scopes explicitly so HR can watch the team total while editing a single employee.
+Name or ID search narrows the employee directory only. The insight stays scoped to country and department, so the group total stays put while HR finds one person. Both pages share that country and department.

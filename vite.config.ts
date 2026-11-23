@@ -1,2 +1,10 @@
-import { defineConfig } from 'vite';
-export default defineConfig({build:{outDir:'dist/client'},server:{proxy:{'/api':'http://localhost:3000'}}});
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [tailwindcss()],
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  build: { outDir: 'dist/client' },
+  server: { proxy: { '/api': 'http://localhost:3000' } },
+})

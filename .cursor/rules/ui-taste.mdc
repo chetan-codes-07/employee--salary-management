@@ -1,0 +1,11 @@
+---
+description: Dashboard UI uses shadcn components and the unslop direction for this compensation ledger
+globs: src/**/*.{tsx,css},index.html
+alwaysApply: false
+---
+
+# UI
+
+Build screens from the shadcn components in `src/components/ui`. Do not add a parallel button, input, dialog, table, or card style in CSS.
+
+This is an HR ledger, not a marketing page. Graphite surfaces, Inter for text, IBM Plex Mono for money, teal only on the save action and the focus ring. Keep the workflow in `docs/PRD.md`: search, country and department filters, currency totals, and the salary editor.

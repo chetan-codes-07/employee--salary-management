@@ -1,0 +1,6 @@
+dist
+node_modules
+.data
+drizzle
+package-lock.json
+public/*

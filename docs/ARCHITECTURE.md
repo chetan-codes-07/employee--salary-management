@@ -4,8 +4,8 @@ React 19 renders the directory and editor. Express 5 owns the API. TypeScript ch
 ## Ownership
 - `src/` contains browser code. Components issue same-origin HTTP requests.
 - `server/app.ts` wires Express routes, JSON boundaries and error responses.
-- `server/employees.ts` owns filters, paging, group totals and salary updates. `server/money.ts` converts decimal input to integer minor units.
-- `server/local.ts` serves the built client and API using file-backed SQLite. `server/worker.ts` adapts the same application to D1 and serves bundled client assets.
+- `server/employees.ts` owns filters, paging, group totals, chart breakdowns and salary updates. `server/money.ts` converts decimal input to integer minor units.
+- `server/local.ts` serves the built client and API using file-backed SQLite. `server/worker.ts` adapts the same application to D1 and serves bundled client assets. `/employees` returns the same client shell as `/` so a refresh stays on the directory.
 - `db/` describes the schema, `drizzle/` holds versioned SQL, and `scripts/` contains build and seed entry points.
 
 ## Salary save

@@ -12,3 +12,7 @@ Use the Node test runner with tsx. Run `npm test` for tests in tests/*.test.ts, 
 From a clean checkout, install with npm ci, seed, test, build and launch. From a fresh reviewer browser, open the deployed app, filter to India Engineering and record the initial INR total. Find the employee, save the raise, refresh, and compare the same group's total. Verify persistence across a service restart or release. Record the actual before/after figures, revision and verification outcome. Check access to the repository, app and video before replying to the assessment email.
 
 These cases describe the release target. A passing unit suite alone does not verify remote persistence or reviewer access.
+
+Regression tests force an audit-history insertion failure, replay all 100 batches of a 10,000-row CSV, retry an interrupted batch, and check profile conflicts and ID allocation after deletion. The HTTP integration tests bind a temporary loopback port.
+
+The built Worker was also exercised against Cloudflare's local D1 emulator. Applying the SQL migrations, logging in, uploading 10,000 employees through the HTTP API, replaying the first and last batch, and raising one INR salary by ₹10,000 all succeeded. The filtered total increased by exactly ₹10,000. This run used a disposable database.

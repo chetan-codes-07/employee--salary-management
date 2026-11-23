@@ -1,31 +1,108 @@
-import {useRef,useEffect,useState,type FormEvent} from 'react';
-import {request,money,type Employee} from './api';
-export function SalaryEditor({employee,onClose,onSave}:{employee:Employee;onClose:()=>void;onSave:(row:Employee)=>void}){
-  const dialog=useRef<HTMLDialogElement>(null);
-  const [amount,setAmount]=useState((employee.salary_minor/100).toFixed(2));
-  const [error,setError]=useState('');
-  const [busy,setBusy]=useState(false);
-  useEffect(()=>{const node=dialog.current!;node.showModal();return ()=>node.close();},[]);
-  async function save(event:FormEvent){
-    event.preventDefault();
-    if(busy)return;
-    setBusy(true);setError('');
-    try{
-      const saved=await request<Employee>('/api/employees/'+employee.id+'/salary',{
-        method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({salary:amount,revision:employee.revision})
-      });
-      onSave(saved);
-    }catch(e){setError(e instanceof Error?e.message:'Save failed. Try again.');setBusy(false);}
+import { useState, type FormEvent } from 'react'
+import { figure, mark, request, type Employee } from './api'
+import { salaryCanSave } from './employee-forms'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+
+export function SalaryEditor({
+  employee,
+  onClose,
+  onSave,
+}: {
+  employee: Employee
+  onClose: () => void
+  onSave: (row: Employee) => void
+}) {
+  const major = employee.salary_minor / 100
+  const [amount, setAmount] = useState(Number.isInteger(major) ? String(major) : major.toFixed(2))
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const conflict = error.includes('Reload')
+  const canSave = !busy && salaryCanSave(amount, employee.salary_minor)
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    if (!canSave) return
+    setBusy(true)
+    setError('')
+    try {
+      const saved = await request<Employee>('/api/employees/' + employee.id + '/salary', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salary: amount.trim(), revision: employee.revision }),
+      })
+      onSave(saved)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed. Try again.')
+      setBusy(false)
+    }
   }
-  return <dialog ref={dialog} aria-labelledby="editor-title" onCancel={e=>{e.preventDefault();if(!busy)onClose();}}>
-    <form onSubmit={save}>
-      <div className="eyebrow">{employee.id}</div><h2 id="editor-title">Edit annual salary</h2>
-      <p><strong>{employee.name}</strong><br/>{employee.department} · {employee.country}</p>
-      <div className="current">Current annual base <b>{money(employee.salary_minor,employee.currency)}</b></div>
-      <label>New annual base salary ({employee.currency})<input autoFocus inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} aria-describedby="amount-hint" aria-invalid={!!error}/></label>
-      <small id="amount-hint">{error || 'Enter an amount with up to two decimal places.'}</small>
-      {error && <span role="alert" className="sr">{error}</span>}
-      <div className="actions"><button type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="primary" disabled={busy}>{busy?'Saving…':'Save salary'}</button></div>
-    </form>
-  </dialog>;
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose()
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit annual salary</DialogTitle>
+          <DialogDescription>
+            {employee.name} · {employee.department} · {employee.country}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="flex flex-col gap-4" onSubmit={save}>
+          <p className="font-mono text-xs text-muted-foreground">{employee.id}</p>
+          <p className="text-sm text-muted-foreground">
+            Current annual base{' '}
+            <span className="font-mono text-base font-medium text-foreground tabular-nums">
+              {figure(employee.salary_minor, employee.currency)}
+            </span>
+          </p>
+          <Field data-invalid={error ? true : undefined}>
+            <FieldLabel htmlFor="salary-amount">New annual base salary ({mark(employee.currency)})</FieldLabel>
+            <Input
+              id="salary-amount"
+              autoFocus
+              inputMode="decimal"
+              value={amount}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'salary-error' : 'salary-hint'}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            {error ? (
+              <FieldError id="salary-error">{error}</FieldError>
+            ) : (
+              <FieldDescription id="salary-hint">Up to two decimal places</FieldDescription>
+            )}
+          </Field>
+          <DialogFooter>
+            {conflict && (
+              <Button type="button" variant="outline" onClick={onClose}>
+                Reload employee
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!canSave}>
+              {busy && <Spinner />}
+              Save salary
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }

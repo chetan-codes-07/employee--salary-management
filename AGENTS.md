@@ -15,7 +15,7 @@ An HR manager finds a fictional employee, updates their annual salary and checks
 ## Commands from the repository root
 1. Install the lockfile with `npm ci`.
 2. Create or update the fictional dataset with `npm run seed`.
-3. Run `npm test` and `npm run check`.
+3. Run `npm test`, `npm run check`, and `npm run lint`.
 4. Build with `npm run build`. Launch with `npm run dev` and visit http://localhost:3000. Rebuild to serve changed client assets.
 5. After changing the schema, generate a migration with `npm run db:generate` and review its SQL.
 
