@@ -1,7 +1,10 @@
 import express from 'express';
 import { openLocal } from './database';
+import {migrate} from './migrate';
 import { createApp } from './app';
-const {sql}=openLocal();
-const app=createApp(sql);
+const {sql,db}=openLocal();
+migrate(db);
+const app=createApp(sql,{seedToken:process.env.SEED_TOKEN});
 app.use(express.static('dist/client'));
-app.listen(3000,'0.0.0.0',()=>console.log('ACME Compensation: http://localhost:3000'));
+const port = Number(process.env.PORT || 3000);
+app.listen(port, () => console.log('ACME Compensation listening on port', port));

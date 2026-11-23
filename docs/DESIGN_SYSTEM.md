@@ -1,8 +1,8 @@
 # Dashboard design
-Proposed design for the employee workflow. The current React entry point is a database-health screen.
+The employee dashboard uses a compact flat layout, teal actions and a native salary-edit dialog. For UI changes, consult [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/tree/281e453/.claude/skills/ui-ux-pro-max). The design search used “HR employee management dashboard” with density 8, followed by the React form guidance.
 
 ## Layout and hierarchy
-Lead with the group selectors and currency summary. Place the searchable directory below them. Give each employee a visible stable ID beside their name so HR can distinguish people with the same name. Label each summary with its active scope. The PRD records the open question about name search.
+Lead with the group selectors and currency summary. Keep search with the group filters and place the directory below the summary. Give each employee a visible stable ID beside their name so HR can distinguish people with the same name. Label each summary with its active scope. The PRD records the open question about name search.
 
 Use a centered layout up to 1120px wide. Below 768px, stack controls and keep the edit action reachable without horizontal scrolling. Right-align numeric columns and use tabular numerals.
 

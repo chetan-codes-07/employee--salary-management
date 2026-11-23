@@ -11,3 +11,5 @@ This application was built with Codex. The user supplied the assessment and expl
 ## Review policy
 
 AI-generated code must pass TypeScript checks, deterministic tests and a production build. Money tests use explicit expected integer values; reporting tests will use hand-calculated fixtures rather than derive expected results from implementation. Deployment and submission evidence is recorded only after each action succeeds. AI assistance is disclosed rather than presented as unaided authorship.
+
+The user asked to use UI UX Pro Max. At upstream revision 281e453, the design-system search for “HR employee management dashboard” recommended flat design and a compact dashboard. We applied those recommendations, labeled the search scope and used native keyboard-accessible form controls. The showcase sections suggested by the same search did not serve the employee workflow. A local browser check on EMP-00001 raised the India Engineering total from INR 49,30,53,160.00 to INR 49,30,63,160.00 with 417 employees before and after refresh.

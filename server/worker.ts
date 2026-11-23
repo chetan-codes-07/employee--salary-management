@@ -11,7 +11,7 @@ const sql:Sql={
   async run(query,values=[]) {return (await binding.prepare(query).bind(...values).run()).meta.changes;},
   async batch(query,rows) {await binding.batch(rows.map(values=>binding.prepare(query).bind(...values)));}
 };
-const app=createApp(sql);
+const app=createApp(sql,{seedToken:(env as {SEED_TOKEN?:string}).SEED_TOKEN});
 app.use((req,res)=>{const path=req.path==='/'?'/index.html':req.path;const asset=(assets as Record<string,{type:string;body:string}>)[path];if(!asset) {res.status(404).send('Not found');return;}res.set('Content-Type',asset.type).send(Buffer.from(asset.body,'base64'));});
 app.listen(3000);
 export default httpServerHandler({port:3000});
