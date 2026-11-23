@@ -7,4 +7,4 @@ visit('dist/client'); writeFileSync('dist/asset-map.json',JSON.stringify(map));
 mkdirSync('dist/server',{recursive:true});mkdirSync('dist/.openai',{recursive:true});
 await build({entryPoints:['server/worker.ts'],outfile:'dist/server/index.js',bundle:true,format:'esm',platform:'node',target:'es2022',external:['cloudflare:*','node:*','better-sqlite3'],minify:true});
 const manifest=JSON.parse(readFileSync('.openai/hosting.json','utf8'));
-writeFileSync('dist/.openai/hosting.json',JSON.stringify({...manifest,compatibility_date:'2026-11-01',compatibility_flags:['nodejs_compat']}));
+writeFileSync('dist/.openai/hosting.json',JSON.stringify(manifest));

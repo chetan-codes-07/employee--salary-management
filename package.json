@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx server/local.ts",
-    "build": "tsc --noEmit && vite build && tsx scripts/build.ts",
-    "test": "tsx --test tests/*.test.ts",
-    "seed": "tsx scripts/seed.ts",
+    "dev": "node --import tsx server/local.ts",
+    "build": "tsc --noEmit && vite build && node --import tsx scripts/build.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "seed": "node --import tsx scripts/seed.ts",
     "db:generate": "drizzle-kit generate",
     "check": "tsc --noEmit"
   },
