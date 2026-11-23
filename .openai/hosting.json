@@ -1,0 +1,9 @@
+{
+  "project_id": "appgprj_6b03d8b2abd08191a551f4cd6f29bfb6",
+  "d1": "DB",
+  "r2": null,
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
