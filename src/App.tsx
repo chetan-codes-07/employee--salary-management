@@ -1,9 +1,11 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Directory } from './Directory'
 import { EmployeeDetail } from './EmployeeDetail'
 import { Insight } from './Insight'
 import { AppSidebar } from './AppSidebar'
 import { request, type Charts, type Directory as DirectoryPage, type Summary } from './api'
+import { refreshCompensation } from './query'
 import { readRoute, routeUrl, type Options, type Page, type RouteFilters } from './route'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -21,18 +23,56 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
   const [level, setLevel] = useState(initial.level)
   const [status, setStatus] = useState(initial.status)
   const [page, setPage] = useState(1)
-  const [refresh, setRefresh] = useState(0)
-  const [groups, setGroups] = useState<Summary[] | null>(null)
-  const [charts, setCharts] = useState<Charts | null>(null)
-  const [directory, setDirectory] = useState<DirectoryPage | null>(null)
-  const [options, setOptions] = useState<Options | null>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(initial.path !== '/employee')
+  const search = useDebounced(q)
+
+  const optionsQuery = useQuery({
+    queryKey: ['options'],
+    queryFn: ({ signal }) => request<Options>('/api/options', { signal }),
+    staleTime: 5 * 60_000,
+  })
+  const directoryQuery = useQuery({
+    queryKey: ['directory', { q: search, country, department, level, status, page }],
+    queryFn: ({ signal }) => {
+      const params = new URLSearchParams({ page: String(page) })
+      if (search) params.set('q', search)
+      if (country) params.set('country', country)
+      if (department) params.set('department', department)
+      if (level) params.set('level', level)
+      if (status) params.set('status', status)
+      return request<DirectoryPage>('/api/employees?' + params, { signal })
+    },
+    enabled: path === '/employees',
+    placeholderData: keepPreviousData,
+  })
+  const summaryQuery = useQuery({
+    queryKey: ['summary', { country, department }],
+    queryFn: ({ signal }) => request<Summary[]>('/api/summary?' + scopeParams(country, department), { signal }),
+    enabled: path === '/',
+    placeholderData: keepPreviousData,
+  })
+  const chartsQuery = useQuery({
+    queryKey: ['charts', { country, department }],
+    queryFn: ({ signal }) => request<Charts>('/api/charts?' + scopeParams(country, department), { signal }),
+    enabled: path === '/',
+    placeholderData: keepPreviousData,
+  })
+
+  const options = optionsQuery.data ?? null
+  const directory = directoryQuery.data ?? null
+  const groups = summaryQuery.data ?? null
+  const charts = chartsQuery.data ?? null
+  const directoryLoading = directoryQuery.isPending
+  const insightLoading = summaryQuery.isPending || chartsQuery.isPending
+  const activeError =
+    path === '/employees'
+      ? directoryQuery.error
+      : path === '/'
+        ? summaryQuery.error || chartsQuery.error
+        : null
 
   useEffect(() => {
     const onPop = () => {
       const next = readRoute()
-      setLoading(next.path !== '/employee')
       setPath(next.path)
       setEmployeeId(next.employeeId)
       setQ(next.q)
@@ -58,60 +98,11 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
     if (location.pathname + location.search !== url) history.replaceState(null, '', url)
   }, [path, q, country, department, level, status, employeeId])
 
-  useEffect(() => {
-    if (path === '/employee') return
-    const controller = new AbortController()
-    const params = new URLSearchParams()
-    if (path === '/employees' && q) params.set('q', q)
-    if (path === '/employees' && level) params.set('level', level)
-    if (path === '/employees' && status) params.set('status', status)
-    if (country) params.set('country', country)
-    if (department) params.set('department', department)
-    setLoading(true)
-    setError('')
-    const timer = setTimeout(async () => {
-      try {
-        const opts = { signal: controller.signal }
-        const nextOptions = request<Options>('/api/options', opts)
-        if (path === '/employees') {
-          const [rows, choices] = await Promise.all([
-            request<DirectoryPage>('/api/employees?' + params + '&page=' + page, opts),
-            nextOptions,
-          ])
-          if (!controller.signal.aborted) {
-            setDirectory(rows)
-            setOptions(choices)
-          }
-        } else {
-          const [totals, picture, choices] = await Promise.all([
-            request<Summary[]>('/api/summary?' + params, opts),
-            request<Charts>('/api/charts?' + params, opts),
-            nextOptions,
-          ])
-          if (!controller.signal.aborted) {
-            setGroups(totals)
-            setCharts(picture)
-            setOptions(choices)
-          }
-        }
-      } catch (e) {
-        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Unable to load employees.')
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
-      }
-    }, 150)
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [path, q, country, department, level, status, page, refresh])
-
   function filters(): RouteFilters {
     return { q, country, department, level, status, employeeId }
   }
 
   function change(set: (value: string) => void, value: string) {
-    setLoading(true)
     setPage(1)
     set(value)
   }
@@ -119,7 +110,6 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
   function go(next: '/' | '/employees') {
     const url = routeUrl(next, filters())
     if (location.pathname + location.search !== url) history.pushState(null, '', url)
-    setLoading(true)
     setPath(next)
     setPage(1)
   }
@@ -156,12 +146,16 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
               : 'min-h-0 flex-1 overflow-auto px-6 py-6'
           }
         >
-          {path !== '/employee' && error && (
+          {path !== '/employee' && activeError && (
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>{path === '/employees' ? 'Directory unavailable' : 'Pay figures unavailable'}</AlertTitle>
               <AlertDescription className="flex flex-wrap items-center gap-3">
-                <span>{error}</span>
-                <Button variant="outline" size="sm" onClick={() => setRefresh((n) => n + 1)}>
+                <span>{activeError instanceof Error ? activeError.message : 'Unable to load employees.'}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (path === '/employees' ? directoryQuery.refetch() : refreshCompensation())}
+                >
                   Retry
                 </Button>
               </AlertDescription>
@@ -172,9 +166,9 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
               country={country}
               department={department}
               options={options}
-              groups={loading ? null : groups}
-              charts={loading ? null : charts}
-              loading={loading}
+              groups={groups}
+              charts={charts}
+              loading={insightLoading}
               onCountry={(value) => change(setCountry, value)}
               onDepartment={(value) => change(setDepartment, value)}
             />
@@ -187,15 +181,14 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
               status={status}
               page={page}
               options={options}
-              directory={loading ? null : directory}
-              loading={loading}
+              directory={directory}
+              loading={directoryLoading}
               onQuery={(value) => change(setQ, value)}
               onCountry={(value) => change(setCountry, value)}
               onDepartment={(value) => change(setDepartment, value)}
               onLevel={(value) => change(setLevel, value)}
               onStatus={(value) => change(setStatus, value)}
               onClear={() => {
-                setLoading(true)
                 setQ('')
                 setCountry('')
                 setDepartment('')
@@ -203,17 +196,14 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
                 setStatus('')
                 setPage(1)
               }}
-              onPage={(next) => {
-                setLoading(true)
-                setPage(next)
-              }}
+              onPage={setPage}
               onOpen={openEmployee}
-              onCreated={() => setRefresh((n) => n + 1)}
+              onCreated={() => refreshCompensation()}
             />
           ) : (
             <EmployeeDetail id={employeeId} onBack={() => go('/employees')} />
           )}
-          {path === '/employees' && !loading && error && (
+          {path === '/employees' && !directoryLoading && activeError && (
             <p className="text-sm text-muted-foreground">Directory unavailable</p>
           )}
         </div>
@@ -221,4 +211,20 @@ export function App({onSignOut, signingOut, signOutError}: {onSignOut:()=>void; 
       <Toaster />
     </SidebarProvider>
   )
+}
+
+function scopeParams(country: string, department: string) {
+  const params = new URLSearchParams()
+  if (country) params.set('country', country)
+  if (department) params.set('department', department)
+  return params
+}
+
+function useDebounced(value: string, delay = 150) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
 }

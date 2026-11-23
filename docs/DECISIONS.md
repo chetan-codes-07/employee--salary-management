@@ -9,6 +9,8 @@
 - **CSV import and toasts:** One CSV upload may create up to 10,000 employees. Success and failure messages for import, export, add-employee and remove-employee appear in a top-right toast rather than an in-page alert.
 - **Employee removal:** DELETE `/api/employees/:id` removes the employee and their salary history after a confirmation dialog in the directory or detail view.
 - **Author badge:** The server injects a floating Made by chetangehlot badge into the HTML shell outside `#root`, with a restore script if the node is removed from the DOM.
+- **Client cache:** TanStack Query keeps directory, insight, and employee responses. A view shows a skeleton only before its first successful read. Later visits render the cached rows immediately and refresh them in the background. Sign-out clears the cache.
+- **Session restore:** The httpOnly session cookie remains the access check. A reload with a remembered sign-in opens the dashboard immediately and confirms the cookie in the background. The sign-in form appears only after the server reports that the session is gone.
 
 Employee numbers above the seeded range are issued monotonically. SQLite owns salary history writes so a failed history insert rolls back the raise. CSV uploads commit 100 rows at a time and use one receipt per file and offset to support retries.
 

@@ -120,7 +120,9 @@ export function Directory({
         description: 'Select the same file to retry. Completed batches are preserved.',
       })
     } finally {
-      if (result.created) onCreated()
+      if (result.created) {
+        onCreated()
+      }
       setImporting(false)
     }
   }

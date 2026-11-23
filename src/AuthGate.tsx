@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { queryClient } from './query'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { App } from './App'
 import { Button } from '@/components/ui/button'
@@ -8,8 +9,27 @@ import { Input } from '@/components/ui/input'
 
 type Session = 'checking' | 'signed-in' | 'signed-out' | 'unavailable'
 
+const signedInKey = 'acme-hr-signed-in'
+
+function rememberedSession(): Session {
+  try {
+    return sessionStorage.getItem(signedInKey) === '1' ? 'signed-in' : 'checking'
+  } catch {
+    return 'checking'
+  }
+}
+
+function rememberSignedIn(signedIn: boolean) {
+  try {
+    if (signedIn) sessionStorage.setItem(signedInKey, '1')
+    else sessionStorage.removeItem(signedInKey)
+  } catch {
+    // Private browsing can block storage. The httpOnly session cookie still decides access.
+  }
+}
+
 export function AuthGate() {
-  const [session, setSession] = useState<Session>('checking')
+  const [session, setSession] = useState<Session>(rememberedSession)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -24,14 +44,18 @@ export function AuthGate() {
           error?: string
         }
         if (!response.ok) throw new Error(data.error || 'The workspace is unavailable.')
-        if (!controller.signal.aborted) setSession(data.authenticated ? 'signed-in' : 'signed-out')
+        if (controller.signal.aborted) return
+        rememberSignedIn(Boolean(data.authenticated))
+        setSession(data.authenticated ? 'signed-in' : 'signed-out')
       })
       .catch((err) => {
         if (controller.signal.aborted) return
+        rememberSignedIn(false)
         setError(err instanceof Error ? err.message : 'The workspace is unavailable.')
         setSession('unavailable')
       })
     function expired() {
+      rememberSignedIn(false)
       setShowPassword(false)
       setSession('signed-out')
       setError('Your session ended. Sign in again.')
@@ -56,6 +80,7 @@ export function AuthGate() {
       })
       const payload = (await response.json()) as { authenticated?: boolean; error?: string }
       if (!response.ok || !payload.authenticated) throw new Error(payload.error || 'Unable to sign in.')
+      rememberSignedIn(true)
       setShowPassword(false)
       setSession('signed-in')
     } catch (err) {
@@ -71,6 +96,8 @@ export function AuthGate() {
     try {
       const response = await fetch('/api/auth/logout', { method: 'POST' })
       if (!response.ok) throw new Error()
+      queryClient.clear()
+      rememberSignedIn(false)
       setShowPassword(false)
       setSession('signed-out')
     } catch {
@@ -81,6 +108,15 @@ export function AuthGate() {
   }
 
   if (session === 'signed-in') return <App onSignOut={signOut} signingOut={busy} signOutError={error} />
+  if (session === 'checking') {
+    return (
+      <main className="min-h-svh bg-background" aria-busy="true">
+        <p className="sr-only" role="status">
+          Checking your session
+        </p>
+      </main>
+    )
+  }
   return (
     <main className="grid min-h-svh place-items-center bg-muted/40 p-5">
       <Card className="w-full max-w-md">
@@ -91,7 +127,6 @@ export function AuthGate() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {session === 'checking' && <p role="status">Checking your session…</p>}
           {session === 'unavailable' && (
             <div className="grid gap-4">
               <p role="alert">{error || 'The workspace is unavailable.'}</p>

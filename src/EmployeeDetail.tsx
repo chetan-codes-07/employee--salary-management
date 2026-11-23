@@ -1,10 +1,12 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { detailsCanSave, parseDetails } from './employee-forms'
 import { RemoveEmployeeDialog } from './RemoveEmployeeDialog'
 import { SalaryEditor } from './SalaryEditor'
 import { figure, formatDate, request, type EmployeeDetail as Detail } from './api'
+import { refreshCompensation } from './query'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,31 +20,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']
 
 export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const [detail, setDetail] = useState<Detail | null>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const employeeQuery = useQuery({
+    queryKey: ['employee', id],
+    queryFn: ({ signal }) => request<Detail>('/api/employees/' + id, { signal }),
+  })
+  const detail = employeeQuery.data
+  const loading = employeeQuery.isPending
+  const error = employeeQuery.error
   const [editingSalary, setEditingSalary] = useState(false)
   const [editingDetails, setEditingDetails] = useState(false)
   const [removing, setRemoving] = useState(false)
-  const [refresh, setRefresh] = useState(0)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    setError('')
-    request<Detail>('/api/employees/' + id, { signal: controller.signal })
-      .then((row) => {
-        if (!controller.signal.aborted) setDetail(row)
-      })
-      .catch((reason) => {
-        if (!controller.signal.aborted)
-          setError(reason instanceof Error ? reason.message : 'Unable to load this employee.')
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [id, refresh])
+  function remember(saved: Detail) {
+    queryClient.setQueryData(['employee', id], saved)
+    refreshCompensation(id)
+  }
 
   async function setStatus(status: 'Active' | 'Inactive') {
     const saved = await request<Detail>('/api/employees/' + id, {
@@ -50,7 +43,7 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, revision: detail?.revision }),
     })
-    setDetail((current) => (current ? { ...current, ...saved } : current))
+    remember(saved)
   }
 
   const band = detail?.band
@@ -107,8 +100,8 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
         <Alert variant="destructive">
           <AlertTitle>Employee unavailable</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-3">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={() => setRefresh((n) => n + 1)}>
+            <span>{error instanceof Error ? error.message : 'Unable to load this employee.'}</span>
+            <Button variant="outline" size="sm" onClick={() => employeeQuery.refetch()}>
               Retry
             </Button>
           </AlertDescription>
@@ -218,7 +211,7 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
           onClose={() => setEditingSalary(false)}
           onSave={() => {
             setEditingSalary(false)
-            setRefresh((n) => n + 1)
+            refreshCompensation(id)
           }}
         />
       )}
@@ -227,9 +220,8 @@ export function EmployeeDetail({ id, onBack }: { id: string; onBack: () => void 
           detail={detail}
           onClose={() => setEditingDetails(false)}
           onSaved={(saved) => {
-            setDetail((current) => (current ? { ...current, ...saved } : current))
+            remember(saved)
             setEditingDetails(false)
-            setRefresh((n) => n + 1)
           }}
         />
       )}
