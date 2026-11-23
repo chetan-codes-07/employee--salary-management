@@ -1,5 +1,5 @@
 import { createClient, type Client } from '@libsql/client'
-import type { Sql, Value } from './database'
+import type { Sql, Value } from './sql'
 
 export function tursoSql(client: Client): Sql {
   return {
@@ -26,8 +26,8 @@ export function tursoSql(client: Client): Sql {
 }
 
 export function openTurso() {
-  const url = process.env.TURSO_DATABASE_URL
-  const authToken = process.env.TURSO_AUTH_TOKEN
+  const url = process.env.TURSO_DATABASE_URL?.trim()
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim()
   if (!url || !/^(libsql|https):\/\//.test(url) || !authToken)
     throw new Error('Configure TURSO_DATABASE_URL and TURSO_AUTH_TOKEN for the hosted database.')
   const client = createClient({ url, authToken })

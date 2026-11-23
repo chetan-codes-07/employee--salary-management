@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers'
 import { httpServerHandler } from 'cloudflare:node'
-import type { Sql } from './database'
+import type { Sql } from './sql'
 import { requireAuthConfig } from './auth'
 import { createApp } from './app'
 import { backfillProfiles } from './employees'

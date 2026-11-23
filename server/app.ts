@@ -1,6 +1,6 @@
 import express from 'express'
 import { authRouter, type AuthConfig } from './auth'
-import type { Sql } from './database'
+import type { Sql } from './sql'
 import {
   filtersFrom,
   listEmployees,

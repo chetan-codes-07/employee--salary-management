@@ -1,4 +1,4 @@
-import type { Sql } from './database'
+import type { Sql } from './sql'
 import { COUNTRIES, DEPARTMENTS } from './locations'
 import { deriveProfile } from './profile'
 export { COUNTRIES, DEPARTMENTS } from './locations'

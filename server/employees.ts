@@ -1,4 +1,4 @@
-import type { Sql, Value } from './database'
+import type { Sql, Value } from './sql'
 import { COUNTRIES, DEPARTMENTS, type Employee } from './seed-data'
 import { InputError, parseSalary } from './money'
 import { LEVELS, STATUSES, RATE_DATE, bandFor, deriveProfile, usdMinor, type Profile } from './profile'

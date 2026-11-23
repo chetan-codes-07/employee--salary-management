@@ -16,4 +16,4 @@ Build the React client and Worker from the committed source. Sites applies schem
 
 ## Vercel runtime
 
-Vercel serves the Vite assets and invokes `api/index.ts` for API requests. The shared Express routes use the Sql adapter in `server/turso.ts` to connect to Turso libSQL. Batched writes use libSQL write transactions. Run `npm run db:prepare:turso` explicitly before the first deployment. It records each migration transactionally and seeds missing fixture IDs. Vercel login throttling uses the platform's forwarded client address header.
+Vercel serves the Vite assets and invokes the Express app bundled into `api/index.js` (from `server/vercel-api.ts`) for API requests. The shared Express routes use the Sql adapter in `server/turso.ts` to connect to Turso libSQL. Batched writes use libSQL write transactions. Run `npm run db:prepare:turso` explicitly before the first deployment. It records each migration transactionally and seeds missing fixture IDs. Vercel login throttling uses the platform's forwarded client address header.

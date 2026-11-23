@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { csvEmployees, IMPORT_BATCH_SIZE } from '../shared/import-csv'
-import type { Sql } from './database'
+import type { Sql } from './sql'
 import { employeeValues } from './employees'
 import { InputError } from './money'
 

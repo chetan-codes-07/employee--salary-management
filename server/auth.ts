@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { Router, type Request, type CookieOptions } from 'express'
-import type { Sql } from './database'
+import type { Sql } from './sql'
 
 export interface AuthConfig {
   HR_EMAIL?: string
@@ -19,11 +19,13 @@ function minimumPasswordLength(config: AuthConfig) {
 }
 
 function authConfigured(config: AuthConfig) {
+  const email = config.HR_EMAIL?.trim()
+  const password = config.HR_PASSWORD?.trim()
   return Boolean(
-    config.HR_EMAIL &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.HR_EMAIL.trim()) &&
-    config.HR_PASSWORD &&
-    config.HR_PASSWORD.length >= minimumPasswordLength(config),
+    email &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    password &&
+    password.length >= minimumPasswordLength(config),
   )
 }
 

@@ -19,12 +19,17 @@ export function AuthGate() {
     const controller = new AbortController()
     fetch('/api/auth/session', { signal: controller.signal, cache: 'no-store' })
       .then(async (response) => {
-        if (!response.ok) throw new Error()
-        const data = (await response.json()) as { authenticated: boolean }
+        const data = (await response.json().catch(() => ({}))) as {
+          authenticated?: boolean
+          error?: string
+        }
+        if (!response.ok) throw new Error(data.error || 'The workspace is unavailable.')
         if (!controller.signal.aborted) setSession(data.authenticated ? 'signed-in' : 'signed-out')
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setSession('unavailable')
+      .catch((err) => {
+        if (controller.signal.aborted) return
+        setError(err instanceof Error ? err.message : 'The workspace is unavailable.')
+        setSession('unavailable')
       })
     function expired() {
       setShowPassword(false)
@@ -89,9 +94,10 @@ export function AuthGate() {
           {session === 'checking' && <p role="status">Checking your session…</p>}
           {session === 'unavailable' && (
             <div className="grid gap-4">
-              <p role="alert">The workspace is unavailable.</p>
+              <p role="alert">{error || 'The workspace is unavailable.'}</p>
               <Button
                 onClick={() => {
+                  setError('')
                   setSession('checking')
                   setAttempt((n) => n + 1)
                 }}

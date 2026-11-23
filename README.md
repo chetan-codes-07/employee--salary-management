@@ -30,7 +30,7 @@ The directory accepts CSV files with up to 10,000 employees and 8 MB of data. Re
 
 ## Vercel and Turso
 
-Vercel serves the React build from `dist/client` and routes `/api/*` to the Express application in `api/index.ts`. Import this GitHub repository into Vercel. The checked-in `vercel.json` selects the Vite framework and `npm run build:vercel`. Use Node.js 22.13 or newer.
+Vercel serves the React build from `dist/client` and routes `/api/*` to the Express application bundled into `api/index.js` from `server/vercel-api.ts`. Import this GitHub repository into Vercel. The checked-in `vercel.json` selects the Vite framework and `npm run build:vercel`. Use Node.js 22.13 or newer.
 
 Create a Turso **libSQL** database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in your private local environment. Run `npm run db:prepare:turso` to apply the migrations and seed 10,000 fixtures. The command preserves salary edits and additional employees on reruns. Database preparation is a separate release step so preview builds do not change the production database.
 
