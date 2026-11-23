@@ -18,9 +18,12 @@
     "lint:fix": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
     "prettier": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "prettier:fix": "yarn prettier --write",
-    "script:lint": "bash -e ./src/scripts/lint.sh"
+    "script:lint": "bash -e ./src/scripts/lint.sh",
+    "build:vercel": "tsc --noEmit && vite build && node --import tsx scripts/build-vercel.ts",
+    "db:prepare:turso": "node --import tsx scripts/prepare-turso.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^12.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

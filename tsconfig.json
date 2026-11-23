@@ -15,5 +15,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "server", "scripts", "tests", "db", "drizzle.config.ts", "vite.config.ts"]
+  "include": ["api", "src", "server", "scripts", "tests", "db", "drizzle.config.ts", "vite.config.ts"]
 }

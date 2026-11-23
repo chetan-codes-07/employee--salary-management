@@ -11,3 +11,5 @@
 - **Author badge:** The server injects a floating Made by chetangehlot badge into the HTML shell outside `#root`, with a restore script if the node is removed from the DOM.
 
 Employee numbers above the seeded range are issued monotonically. SQLite owns salary history writes so a failed history insert rolls back the raise. CSV uploads commit 100 rows at a time and use one receipt per file and offset to support retries.
+
+The requested Vercel deployment uses Turso libSQL for persistent relational storage. This preserves existing SQLite queries, constraints and triggers. The custom-domain candidate is salary.chetangehlot.com. Vercel serves static assets directly, while API requests use the shared Express app. Migration and seed preparation are explicit release operations.

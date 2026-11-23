@@ -6,6 +6,7 @@ export interface AuthConfig {
   HR_EMAIL?: string
   HR_PASSWORD?: string
   hosted?: boolean
+  clientAddressHeader?: string
 }
 
 const lifetime = 8 * 60 * 60 * 1000
@@ -72,7 +73,7 @@ export function authRouter(db: Sql, config: AuthConfig = {}) {
       res.status(503).json({ error: 'Sign-in is not configured. Contact the workspace administrator.' })
       return
     }
-    const address = config.hosted ? req.get('cf-connecting-ip') : req.socket.remoteAddress
+    const address = config.hosted ? req.get(config.clientAddressHeader || 'cf-connecting-ip') : req.socket.remoteAddress
     const client = hash(address || 'unknown').toString('hex')
     const now = Date.now()
     await db.run('DELETE FROM login_attempts WHERE expires_at<=?', [now])
